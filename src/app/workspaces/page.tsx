@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 
 export default function WorkspacesPage() {
   const [workspaces, setWorkspaces] = useState([]);
