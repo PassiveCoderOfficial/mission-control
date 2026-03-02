@@ -31,7 +31,6 @@ model Member {
   workspace    Workspace @relation(fields: [workspaceId], references: [id])
   assignedTasks Task[]  @relation("TaskAssignee")
   comments      Comment[] @relation("CommentAuthor")
-  sessions      Session[] @relation("MemberSessions")
   createdAt    DateTime @default(now())
 
   @@unique([email, workspaceId])
