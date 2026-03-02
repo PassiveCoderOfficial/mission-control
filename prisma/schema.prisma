@@ -50,7 +50,7 @@ model Project {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
   boards      Board[]
-  tasks       Task[]
+  // tasks       Task[]  // If you want tasks directly under project, uncomment and add projectId to Task
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
