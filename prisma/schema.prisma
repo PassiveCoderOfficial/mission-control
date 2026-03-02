@@ -1,0 +1,195 @@
+// This is your Prisma schema for Mission Control Dashboard,
+// a project management and AI agent orchestration platform.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
+  members  Member[]
+  agents   Agent[]
+}
+
+model Member {
+  id           String   @id @default(cuid())
+  email        String
+  name         String
+  role         Role     @default(MEMBER)
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  assignedTasks Task[]  @relation("AssignedMember")
+  createdAt    DateTime @default(now())
+
+  @@unique([email, workspaceId])
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#3b82f6")
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  boards      Board[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Board {
+  id          String   @id @default(cuid())
+  name        String
+  type        BoardType @default(KANBAN)
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id])
+  columns     Column[]
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum BoardType {
+  KANBAN
+  LIST
+  TIMELINE
+}
+
+model Column {
+  id        String   @id @default(cuid())
+  name      String
+  position  Int
+  boardId   String
+  board     Board @relation(fields: [boardId], references: [id])
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([boardId, position])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  priority    Priority  @default(MEDIUM)
+  status      String   // Could be column position or status enum
+  dueDate     DateTime?
+  estimatedHours Float?
+  actualHours Float?
+  boardId     String
+  board       Board @relation(fields: [boardId], references: [id])
+  columnId    String?
+  column      Column? @relation(fields: [columnId], references: [id])
+  assigneeId  String?
+  assignee    Member? @relation("AssignedMember", fields: [assigneeId], references: [id])
+  agentId     String?
+  agent       Agent?  @relation(fields: [agentId], references: [id])
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  parentTaskId String?
+  parentTask   Task?  @relation("TaskHierarchy", fields: [parentTaskId], references: [id])
+  subtasks     Task[] @relation("TaskHierarchy")
+  tags        Tag[]
+  comments    Comment[]
+  attachments Attachment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String
+  color String @default("#6b7280")
+  tasks Task[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  authorId  String
+  author    Member   @relation(fields: [authorId], references: [id])
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  size      Int
+  mimeType  String
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  uploadedAt DateTime @default(now())
+}
+
+model Agent {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  systemPrompt String
+  avatarUrl   String?
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, workspaceId])
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  user               User    @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String?  @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  expires      DateTime
+  sessionToken String   @unique
+  accessToken  String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
