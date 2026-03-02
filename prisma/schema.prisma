@@ -1,5 +1,5 @@
-// This is your Prisma schema for Mission Control Dashboard,
-// a project management and AI agent orchestration platform.
+// Mission Control Dashboard - Prisma Schema
+// Explicit relation names to avoid inference errors
 
 generator client {
   provider = "prisma-client-js"
@@ -29,8 +29,8 @@ model Member {
   role         Role     @default(MEMBER)
   workspaceId  String
   workspace    Workspace @relation(fields: [workspaceId], references: [id])
-  assignedTasks Task[]  @relation("AssignedMember")
-  comments      Comment[]
+  assignedTasks Task[]  @relation("TaskAssignee")
+  comments      Comment[] @relation("CommentAuthor")
   createdAt    DateTime @default(now())
 
   @@unique([email, workspaceId])
@@ -50,7 +50,6 @@ model Project {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
   boards      Board[]
-  // tasks       Task[]  // If you want tasks directly under project, uncomment and add projectId to Task
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -62,7 +61,7 @@ model Board {
   projectId   String
   project     Project @relation(fields: [projectId], references: [id])
   columns     Column[]
-  tasks       Task[]
+  tasks       Task[]  @relation("BoardTasks")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -79,7 +78,7 @@ model Column {
   position  Int
   boardId   String
   board     Board @relation(fields: [boardId], references: [id])
-  tasks     Task[]
+  tasks     Task[] @relation("ColumnTasks")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -87,48 +86,46 @@ model Column {
 }
 
 model Task {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  priority    Priority  @default(MEDIUM)
-  status      String   // Could be column position or status enum
-  dueDate     DateTime?
-  estimatedHours Float?
-  actualHours Float?
-  boardId     String
-  board       Board @relation(fields: [boardId], references: [id])
-  columnId    String?
-  column      Column? @relation(fields: [columnId], references: [id])
-  assigneeId  String?
-  assignee    Member? @relation("AssignedMember", fields: [assigneeId], references: [id])
-  agentId     String?
-  agent       Agent?  @relation(fields: [agentId], references: [id])
-  projectId   String?
-  project     Project? @relation(fields: [projectId], references: [id])
-  parentTaskId String?
-  parentTask   Task?  @relation("TaskHierarchy", fields: [parentTaskId], references: [id])
-  subtasks     Task[] @relation("TaskHierarchy")
-  tags        Tag[]
-  comments    Comment[]
-  attachments Attachment[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  priority        Priority  @default(MEDIUM)
+  status          String
+  dueDate         DateTime?
+  estimatedHours  Float?
+  actualHours     Float?
+  boardId         String
+  board           Board @relation(fields: [boardId], references: [id])
+  columnId        String?
+  column          Column? @relation(fields: [columnId], references: [id])
+  assigneeId      String?
+  assignee        Member? @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  agentId         String?
+  agent           Agent?  @relation("AgentTasks", fields: [agentId], references: [id])
+  parentTaskId    String?
+  parentTask      Task?  @relation("TaskHierarchy", fields: [parentTaskId], references: [id])
+  subtasks        Task[] @relation("TaskHierarchy")
+  tags            Tag[]
+  comments        Comment[] @relation("TaskComments")
+  attachments     Attachment[] @relation("TaskAttachments")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Tag {
   id    String @id @default(cuid())
   name  String
   color String @default("#6b7280")
-  tasks Task[]
+  tasks Task[] @relation("TagTasks")
 }
 
 model Comment {
   id        String   @id @default(cuid())
   content   String
   authorId  String
-  author    Member   @relation(fields: [authorId], references: [id])
+  author    Member   @relation("CommentAuthor", fields: [authorId], references: [id])
   taskId    String
-  task      Task     @relation(fields: [taskId], references: [id])
+  task      Task     @relation("TaskComments", fields: [taskId], references: [id])
   createdAt DateTime @default(now())
 }
 
@@ -139,7 +136,7 @@ model Attachment {
   size      Int
   mimeType  String
   taskId    String
-  task      Task     @relation(fields: [taskId], references: [id])
+  task      Task     @relation("TaskAttachments", fields: [taskId], references: [id])
   uploadedAt DateTime @default(now())
 }
 
@@ -151,7 +148,7 @@ model Agent {
   avatarUrl   String?
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
-  tasks       Task[]
+  tasks       Task[] @relation("AgentTasks")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -164,7 +161,7 @@ model Account {
   type               String
   provider           String
   providerAccountId  String
-  user               User    @relation(fields: [userId], references: [id])
+  user               User    @relation("UserAccounts", fields: [userId], references: [id])
 
   @@unique([provider, providerAccountId])
 }
@@ -175,8 +172,8 @@ model User {
   email         String?  @unique
   emailVerified DateTime?
   image         String?
-  accounts      Account[]
-  sessions      Session[]
+  accounts      Account[] @relation("UserAccounts")
+  sessions      Session[] @relation("UserSessions")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -187,7 +184,7 @@ model Session {
   expires      DateTime
   sessionToken String   @unique
   accessToken  String   @unique
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation("UserSessions", fields: [userId], references: [id])
 }
 
 enum Priority {
