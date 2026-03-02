@@ -1,5 +1,5 @@
 // Mission Control Dashboard - Prisma Schema
-// Explicit relation names to avoid inference errors
+// All relations explicitly named to avoid inference errors
 
 generator client {
   provider = "prisma-client-js"
@@ -31,6 +31,7 @@ model Member {
   workspace    Workspace @relation(fields: [workspaceId], references: [id])
   assignedTasks Task[]  @relation("TaskAssignee")
   comments      Comment[] @relation("CommentAuthor")
+  sessions      Session[] @relation("MemberSessions")
   createdAt    DateTime @default(now())
 
   @@unique([email, workspaceId])
@@ -61,7 +62,7 @@ model Board {
   projectId   String
   project     Project @relation(fields: [projectId], references: [id])
   columns     Column[]
-  tasks       Task[]  @relation("BoardTasks")
+  tasks       Task[] @relation("BoardTasks")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -95,9 +96,9 @@ model Task {
   estimatedHours  Float?
   actualHours     Float?
   boardId         String
-  board           Board @relation(fields: [boardId], references: [id])
+  board           Board @relation("BoardTasks", fields: [boardId], references: [id])
   columnId        String?
-  column          Column? @relation(fields: [columnId], references: [id])
+  column          Column? @relation("ColumnTasks", fields: [columnId], references: [id])
   assigneeId      String?
   assignee        Member? @relation("TaskAssignee", fields: [assigneeId], references: [id])
   agentId         String?
@@ -105,7 +106,7 @@ model Task {
   parentTaskId    String?
   parentTask      Task?  @relation("TaskHierarchy", fields: [parentTaskId], references: [id])
   subtasks        Task[] @relation("TaskHierarchy")
-  tags            Tag[]
+  tags            Tag[] @relation("TagTasks")
   comments        Comment[] @relation("TaskComments")
   attachments     Attachment[] @relation("TaskAttachments")
   createdAt       DateTime @default(now())
