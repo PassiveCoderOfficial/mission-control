@@ -4,18 +4,12 @@ const nextConfig: NextConfig = {
   // Disable React Compiler for now - it's experimental and heavy
   reactCompiler: false,
   
-  // Enable Turbopack for better build performance
+  // Enable Turbopack with empty config (Next.js 16 default)
   turbopack: {
-    // Set the root directory to avoid workspace lockfile conflicts
     root: __dirname,
   },
   
-  // Optimize bundle splitting
-  webpack: (config, { defaultLoaders }) => {
-    // Tree-shake Prisma better
-    config.externals = ['prisma', ...config.externals];
-    return config;
-  },
+  // Remove webpack config - Turbopack handles bundling differently
 };
 
 export default nextConfig;
