@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model Workspace {
@@ -172,6 +172,7 @@ model User {
   email         String?  @unique
   emailVerified DateTime?
   image         String?
+  password      String?
   accounts      Account[] @relation("UserAccounts")
   sessions      Session[] @relation("UserSessions")
   createdAt     DateTime @default(now())
@@ -185,6 +186,14 @@ model Session {
   sessionToken String   @unique
   accessToken  String   @unique
   user         User     @relation("UserSessions", fields: [userId], references: [id])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 enum Priority {

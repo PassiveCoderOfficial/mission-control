@@ -1,6 +1,6 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { prisma } from '@/lib/db';
+import { authenticateUser } from '@/lib/auth';
 
 const authOptions = NextAuth({
   providers: [
@@ -15,37 +15,9 @@ const authOptions = NextAuth({
           return null;
         }
 
-        // For MVP: accept demo credentials
-        if (credentials.email === 'walibdpro@gmail.com' && credentials.password === 'SitePass@123') {
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-          });
-
-          if (user) {
-            // Return compatible user object
-            return {
-              id: user.id,
-              email: user.email || credentials.email,
-              name: user.name || 'Wali',
-            };
-          }
-
-          // Create user if not exists
-          const newUser = await prisma.user.create({
-            data: {
-              email: credentials.email,
-              name: 'Wali',
-            },
-          });
-          
-          return {
-            id: newUser.id,
-            email: newUser.email || credentials.email,
-            name: newUser.name || 'Wali',
-          };
-        }
-
-        return null;
+        const user = await authenticateUser(credentials.email, credentials.password);
+        
+        return user;
       }
     })
   ],
@@ -54,18 +26,23 @@ const authOptions = NextAuth({
   },
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        // Add timezone information
+        token.timezone = process.env.NEXT_PUBLIC_TIMEZONE || 'Asia/Dhaka';
       }
       return token;
     },
     async session({ session, token }) {
       if (token.id && session.user) {
         session.user.id = token.id as string;
+        // Add timezone to session
+        (session.user as any).timezone = token.timezone || 'Asia/Dhaka';
       }
       return session;
     }
