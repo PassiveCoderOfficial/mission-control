@@ -4,7 +4,24 @@ import { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
-const initialColumns = {
+interface Task {
+  id: string;
+  title: string;
+  priority: 'high' | 'medium' | 'low';
+  assignee: string;
+}
+
+interface Column {
+  id: string;
+  title: string;
+  tasks: Task[];
+}
+
+interface Columns {
+  [key: string]: Column;
+}
+
+const initialColumns: Columns = {
   'todo': {
     id: 'todo',
     title: 'To Do',
@@ -35,7 +52,7 @@ const initialColumns = {
 };
 
 export default function KanbanBoardPage() {
-  const [columns, setColumns] = useState(initialColumns);
+  const [columns, setColumns] = useState<Columns>(initialColumns);
   const [showAgentModal, setShowAgentModal] = useState(false);
   const [newAgent, setNewAgent] = useState({ name: '', description: '', systemPrompt: '' });
 
@@ -50,11 +67,11 @@ export default function KanbanBoardPage() {
 
     const sourceCol = columns[source];
     const destCol = columns[dest];
-    const task = sourceCol.tasks.find((t: any) => t.id === taskId);
+    const task = sourceCol.tasks.find((t: Task) => t.id === taskId);
 
     if (!task) return;
 
-    const newSourceTasks = sourceCol.tasks.filter((t: any) => t.id !== taskId);
+    const newSourceTasks = sourceCol.tasks.filter((t: Task) => t.id !== taskId);
     const newDestTasks = [...destCol.tasks, task];
 
     setColumns({
@@ -85,7 +102,7 @@ export default function KanbanBoardPage() {
 
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {Object.values(columns).map((col: any) => (
+          {Object.values(columns).map((col: Column) => (
             <div key={col.id} className="bg-gray-100 rounded-lg p-4">
               <h3 className="font-bold mb-4 text-gray-700">{col.title}</h3>
               <Droppable droppableId={col.id}>
@@ -95,7 +112,7 @@ export default function KanbanBoardPage() {
                     {...provided.droppableProps}
                     className={`min-h-[200px] ${snapshot.isDraggingOver ? 'bg-gray-200' : ''}`}
                   >
-                    {col.tasks.map((task: any, idx: number) => (
+                    {col.tasks.map((task: Task, idx: number) => (
                       <Draggable key={task.id} draggableId={task.id} index={idx}>
                         {(provided, snapshot) => (
                           <div

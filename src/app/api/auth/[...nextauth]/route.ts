@@ -2,7 +2,7 @@ import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/db';
 
-export const authOptions = {
+const authOptions = NextAuth({
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -22,7 +22,12 @@ export const authOptions = {
           });
 
           if (user) {
-            return user;
+            // Return compatible user object
+            return {
+              id: user.id,
+              email: user.email || credentials.email,
+              name: user.name || 'Wali',
+            };
           }
 
           // Create user if not exists
@@ -32,7 +37,12 @@ export const authOptions = {
               name: 'Wali',
             },
           });
-          return newUser;
+          
+          return {
+            id: newUser.id,
+            email: newUser.email || credentials.email,
+            name: newUser.name || 'Wali',
+          };
         }
 
         return null;
@@ -54,12 +64,12 @@ export const authOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (token.id) {
+      if (token.id && session.user) {
         session.user.id = token.id as string;
       }
       return session;
     }
   }
-};
+});
 
-export default NextAuth(authOptions);
+export { authOptions as GET, authOptions as POST };

@@ -11,7 +11,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  return <>{children}>;
+  return <>{children}</>;
 }
 
 export async function generateStaticParams() {
