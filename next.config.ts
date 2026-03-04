@@ -5,7 +5,10 @@ const nextConfig: NextConfig = {
   reactCompiler: false,
   
   // Enable Turbopack for better build performance
-  turbopack: {},
+  turbopack: {
+    // Set the root directory to avoid workspace lockfile conflicts
+    root: __dirname,
+  },
   
   // Optimize bundle splitting
   webpack: (config, { defaultLoaders }) => {
