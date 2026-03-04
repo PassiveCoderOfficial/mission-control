@@ -17,9 +17,10 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  projects Project[]
-  members  Member[]
-  agents   Agent[]
+  projects        Project[]
+  members         Member[]
+  agents          Agent[]
+  progressPipelines ProgressPipeline[]
 }
 
 model Member {
@@ -141,18 +142,66 @@ model Attachment {
 }
 
 model Agent {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  systemPrompt String
-  avatarUrl   String?
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
-  tasks       Task[] @relation("AgentTasks")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  systemPrompt    String
+  avatarUrl       String?
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id])
+  tasks           Task[] @relation("AgentTasks")
+  
+  // Agent Status & Health
+  status          AgentStatus @default(INACTIVE)
+  lastActive      DateTime?
+  uptime          Float      @default(0) // in hours
+  cpuUsage        Float?     // percentage
+  memoryUsage     Float?     // in MB
+  errorRate       Float      @default(0) // percentage
+  
+  // Performance Metrics
+  tasksCompleted  Int       @default(0)
+  avgResponseTime Float     @default(0) // in seconds
+  successRate     Float     @default(100) // percentage
+  
+  // AI & Token Metrics
+  tokensUsed      Int       @default(0)
+  tokensCost      Float     @default(0) // in USD
+  requestsCount   Int       @default(0)
+  lastTokenReset  DateTime  @default(now())
+  
+  // Department & Role
+  department      String?
+  role            String?
+  color           String    @default("#3b82f6")
+  
+  // Monitoring
+  healthCheckUrl  String?
+  monitoringLevel MonitoringLevel @default(BASIC)
+  
+  // Relations
+  metrics         AgentMetric[]
+  salesMetrics    SalesMetric[]
+  tokenSessions   TokenSession[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@unique([name, workspaceId])
+}
+
+enum AgentStatus {
+  ACTIVE
+  INACTIVE
+  BUSY
+  ERROR
+  MAINTENANCE
+}
+
+enum MonitoringLevel {
+  BASIC
+  DETAILED
+  CRITICAL
 }
 
 model Account {
@@ -196,9 +245,569 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// AI Metrics & Performance Tracking
+model AgentMetric {
+  id            String   @id @default(cuid())
+  agentId       String
+  agent         Agent    @relation(fields: [agentId], references: [id])
+  
+  // Performance
+  responseTime  Float    // in milliseconds
+  timestamp     DateTime @default(now())
+  
+  // Token Usage
+  tokensIn      Int      @default(0)
+  tokensOut     Int      @default(0)
+  totalTokens   Int      @default(0)
+  cost          Float    @default(0) // in USD
+  
+  // Request Details
+  model         String?
+  endpoint      String?
+  status        MetricStatus @default(SUCCESS)
+  errorMessage  String?
+  
+  // Additional Metrics
+  cpuUsage      Float?   // percentage
+  memoryUsage   Float?   // in MB
+  temperature   Float?   // if applicable
+  
+  @@index([agentId, timestamp])
+}
+
+enum MetricStatus {
+  SUCCESS
+  ERROR
+  TIMEOUT
+  RATE_LIMITED
+}
+
+// Sales & Business Metrics
+model SalesMetric {
+  id            String   @id @default(cuid())
+  agentId       String?
+  agent         Agent?   @relation(fields: [agentId], references: [id])
+  
+  // Sales Details
+  amount        Float    // revenue amount
+  currency      String   @default("USD")
+  source        String?  // lead source
+  customer      String?  // customer name/email
+  
+  // Sales Status
+  status        SalesStatus @default(LEAD)
+  pipeline      String?  // sales pipeline stage
+  
+  // Time Tracking
+  leadCreatedAt DateTime @default(now())
+  convertedAt   DateTime?
+  
+  // Additional Info
+  notes         String?
+  tags          String?  // JSON array as string
+  value         Float?   // deal value
+  
+  @@index([agentId, status])
+}
+
+enum SalesStatus {
+  LEAD
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+// System Statistics & Health
+model SystemStat {
+  id            String   @id @default(cuid())
+  
+  // System Metrics
+  cpuUsage      Float    // percentage
+  memoryUsage   Float    // in MB
+  diskUsage     Float    // percentage
+  uptime        Float    // in seconds
+  
+  // API & Requests
+  requestsCount Int      @default(0)
+  errorRate     Float    @default(0) // percentage
+  responseTime  Float    // average in ms
+  
+  // Active Users
+  activeUsers   Int      @default(0)
+  activeAgents  Int      @default(0)
+  
+  // Token & Cost Tracking
+  totalTokens   Int      @default(0)
+  totalCost     Float    @default(0) // in USD
+  
+  timestamp     DateTime @default(now())
+  
+  @@index([timestamp])
+}
+
+// Token Session Tracking
+model TokenSession {
+  id            String   @id @default(cuid())
+  agentId       String
+  agent         Agent    @relation(fields: [agentId], references: [id])
+  
+  // Session Details
+  sessionId     String   @unique
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  duration      Float?   // in seconds
+  
+  // Token Usage
+  tokensUsed    Int      @default(0)
+  tokensLimit   Int?
+  cost          Float    @default(0)
+  
+  // Session Status
+  status        SessionStatus @default(ACTIVE)
+  
+  // Additional Info
+  userAgent     String?
+  ipAddress     String?
+  
+  @@index([agentId, startTime])
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  ERROR
+}
+
+// Project Progress Pipeline
+model ProgressPipeline {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  color         String    @default("#3b82f6")
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  
+  // Pipeline Stages
+  stages        PipelineStage[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PipelineStage {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  position      Int
+  pipelineId    String
+  pipeline      ProgressPipeline @relation(fields: [pipelineId], references: [id])
+  
+  // Stage Metrics
+  itemCount     Int      @default(0)
+  value         Float?   // total value at this stage
+  
+  // Color & Status
+  color         String    @default("#e5e7eb")
+  isActive      Boolean   @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([pipelineId, position])
+}
+
 enum Priority {
   LOW
   MEDIUM
   HIGH
   URGENT
+}
+
+// AI Agent Subscriptions System
+// Target: Bangladeshi expats in Middle East & Asia Pacific
+
+model Customer {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  phone           String?
+  country         String?  // Country of residence (Saudi Arabia, UAE, Malaysia, Singapore, etc.)
+  nationality     String?  // Nationality (Bangladeshi for target market)
+  region          String?  // Middle East, Asia Pacific, etc.
+  currency        String   @default("USD")
+  timezone        String   @default("UTC")
+  
+  // Business Info
+  businessType    String?  // Individual, Company, etc.
+  industry        String?  // Industry/sector
+  
+  // Billing Info
+  billingAddress  String?
+  paymentMethod   String?  // stripe_id, paypal_email, etc.
+  
+  // Account Status
+  status          CustomerStatus @default(ACTIVE)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  subscriptions   Subscription[]
+  deployments     Deployment[]
+  leads           Lead[]
+  conversions     Conversion[]
+  invoices        Invoice[]
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  CANCELLED
+  PENDING
+}
+
+model SubscriptionPlan {
+  id              String   @id @default(cuid())
+  name            String
+  description     String
+  type            SubscriptionType
+  price           Float    // Monthly price in USD
+  currency        String   @default("USD")
+  
+  // Features
+  agentsIncluded  Int      @default(1)
+  tokensIncluded  Int      @default(100000)
+  websitesAllowed Int      @default(1)
+  whatsappNumbers Int      @default(0)
+  
+  // Features List (JSON)
+  features        String?  // JSON array of features
+  
+  // Target Market
+  targetRegion    String?  // Middle East, Asia Pacific, etc.
+  
+  // Billing
+  billingCycle   BillingCycle @default(MONTHLY)
+  trialDays      Int      @default(7)
+  
+  // Status
+  isActive       Boolean  @default(true)
+  isPopular      Boolean  @default(false)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  subscriptions  Subscription[]
+}
+
+enum SubscriptionType {
+  WEBSITE_AGENT
+  WHATSAPP_AGENT
+  COMPREHENSIVE
+  ENTERPRISE
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+model Subscription {
+  id              String   @id @default(cuid())
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  planId          String
+  plan            SubscriptionPlan @relation(fields: [planId], references: [id])
+  
+  // Subscription Details
+  status          SubscriptionStatus @default(ACTIVE)
+  startDate       DateTime @default(now())
+  endDate         DateTime?
+  trialEndDate    DateTime?
+  
+  // Billing
+  nextBillingDate DateTime?
+  amount          Float
+  currency        String   @default("USD")
+  paymentMethod   String?  // stripe_payment_intent_id, etc.
+  
+  // Usage Tracking
+  tokensUsed      Int      @default(0)
+  websitesDeployed Int     @default(0)
+  whatsappNumbers Int      @default(0)
+  
+  // Agent Usage
+  activeAgents    Int      @default(0)
+  agentUsageHours Float    @default(0)
+  
+  // Analytics
+  leadsGenerated  Int      @default(0)
+  conversions     Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  deployments     Deployment[]
+  invoices        Invoice[]
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  SUSPENDED
+  TRIAL
+  PENDING
+}
+
+model Deployment {
+  id              String   @id @default(cuid())
+  subscriptionId  String
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id])
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  
+  // Deployment Type
+  type            DeploymentType
+  name            String
+  description     String?
+  
+  // Website Deployments
+  domain          String?
+  url             String?
+  platform        String?  // WordPress, React, Custom, etc.
+  
+  // WhatsApp Deployments
+  phoneNumber     String?
+  whatsappBusinessId String?
+  
+  // Agent Configuration
+  agentId         String?  // Link to existing agent in Mission Control
+  agentConfig     String?  // JSON configuration
+  
+  // Status
+  status          DeploymentStatus @default(SETUP)
+  deployedAt      DateTime?
+  
+  // Performance Metrics
+  uptime          Float    @default(0) // in percentage
+  responseTime   Float?   // in milliseconds
+  errorRate       Float    @default(0) // in percentage
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  leads           Lead[]
+  conversions     Conversion[]
+}
+
+enum DeploymentType {
+  WEBSITE_AGENT
+  WHATSAPP_AGENT
+  BOTH
+}
+
+enum DeploymentStatus {
+  SETUP
+  DEPLOYING
+  ACTIVE
+  INACTIVE
+  ERROR
+  MAINTENANCE
+}
+
+model Lead {
+  id              String   @id @default(cuid())
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  deploymentId    String
+  deployment      Deployment @relation(fields: [deploymentId], references: [id])
+  
+  // Lead Information
+  name            String?
+  email           String?
+  phone           String?
+  source          LeadSource @default(WEBSITE)
+  location        String?  // Country, city
+  
+  // Lead Details
+  message         String?
+  interest        String?  // What they're interested in
+  budget          String?  // Budget range
+  
+  // Status
+  status          LeadStatus @default(NEW)
+  priority        LeadPriority @default(MEDIUM)
+  
+  // Time Tracking
+  contactedAt     DateTime?
+  followedUpAt    DateTime?
+  convertedAt     DateTime?
+  
+  // Assignment
+  assignedTo      String?  // Agent or team member
+  
+  // Additional Info
+  tags            String?  // JSON array
+  notes           String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  conversions     Conversion[]
+}
+
+enum LeadSource {
+  WEBSITE
+  WHATSAPP
+  EMAIL
+  SOCIAL_MEDIA
+  REFERRAL
+  ADVERTISING
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  NURTURING
+  CONVERTED
+  LOST
+  SPAM
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Conversion {
+  id              String   @id @default(cuid())
+  leadId          String
+  lead            Lead @relation(fields: [leadId], references: [id])
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  deploymentId    String
+  deployment      Deployment @relation(fields: [deploymentId], references: [id])
+  
+  // Conversion Details
+  type            ConversionType
+  value           Float    // Revenue value
+  currency        String   @default("USD")
+  
+  // Time Tracking
+  convertedAt     DateTime @default(now())
+  timeToConvert  Float?   // Hours from lead to conversion
+  
+  // Attribution
+  attribution     String?  // How the conversion happened
+  
+  // Additional Info
+  description     String?
+  tags            String?  // JSON array
+  
+  createdAt       DateTime @default(now())
+}
+
+enum ConversionType {
+  SUBSCRIPTION_PURCHASE
+  WEBSITE_PROJECT
+  CONSULTATION
+  SERVICE_UPGRADE
+  REFERRAL
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  subscriptionId  String
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id])
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  
+  // Invoice Details
+  invoiceNumber   String   @unique
+  amount          Float
+  currency        String   @default("USD")
+  dueDate         DateTime
+  
+  // Status
+  status          InvoiceStatus @default(PENDING)
+  paidAt          DateTime?
+  
+  // Billing Period
+  periodStart     DateTime
+  periodEnd       DateTime
+  
+  // Payment Info
+  paymentMethod   String?  // stripe_charge_id, etc.
+  paymentDate     DateTime?
+  
+  // Additional Info
+  description     String?
+  items           String?  // JSON array of line items
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+  PARTIAL
+}
+
+// Analytics for AI Agent Subscriptions
+model SubscriptionAnalytics {
+  id              String   @id @default(cuid())
+  date            DateTime @default(now())
+  
+  // Subscription Metrics
+  totalSubscriptions Int    @default(0)
+  activeSubscriptions Int   @default(0)
+  newSubscriptions    Int    @default(0)
+  cancelledSubscriptions Int @default(0)
+  
+  // Revenue Metrics
+  totalRevenue        Float  @default(0)
+  monthlyRevenue      Float  @default(0)
+  averageRevenuePerSubscription Float @default(0)
+  
+  // Customer Metrics
+  totalCustomers      Int    @default(0)
+  activeCustomers     Int    @default(0)
+  newCustomers        Int    @default(0)
+  churnRate           Float  @default(0) // percentage
+  
+  // Regional Analytics (Target: Bangladeshi Expats)
+  middleEastCustomers  Int    @default(0)
+  asiaPacificCustomers Int    @default(0)
+  bangladeshiExpats   Int    @default(0)
+  
+  // Deployment Metrics
+  totalDeployments    Int    @default(0)
+  websiteDeployments  Int    @default(0)
+  whatsappDeployments Int    @default(0)
+  
+  // Performance Metrics
+  averageUptime       Float  @default(0) // percentage
+  averageResponseTime Float  @default(0) // ms
+  
+  createdAt           DateTime @default(now())
+  
+  @@unique([date])
 }

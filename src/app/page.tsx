@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  // For now, redirect to workspaces page
-  redirect('/workspaces');
+  // Redirect to the enhanced dashboard
+  redirect('/dashboard/enhanced-dashboard');
 }
