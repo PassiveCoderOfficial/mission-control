@@ -212,24 +212,18 @@ export async function POST(request: NextRequest) {
         tasksCompleted: body.status === 'SUCCESS' ? {
           increment: 1,
         } : undefined,
-        errorRate: body.status === 'ERROR' ? {
-          set: {
-            // This is a simplified calculation - in production you'd want a more sophisticated approach
-            increment: 1,
-          },
-        } : undefined,
-        avgResponseTime: body.status === 'SUCCESS' ? {
-          set: {
-            // Recalculate average response time
-            // This is simplified - in production you'd store totalResponseTime and totalCount
-          },
-        } : undefined,
+        // Note: errorRate and avgResponseTime need proper calculation
+        // TODO: Track totalErrors and totalResponseTime separately, then calculate rates
       },
     });
 
     // Update system stats (simplified - in production you'd want to batch these updates)
     await prisma.systemStat.create({
       data: {
+        cpuUsage: 0,
+        memoryUsage: 0,
+        diskUsage: 0,
+        uptime: 0,
         requestsCount: 1,
         errorRate: body.status === 'ERROR' ? 1 : 0,
         responseTime: body.responseTime,
