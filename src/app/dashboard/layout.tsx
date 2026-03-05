@@ -1,16 +1,13 @@
-'use client';
-
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
-  const router = useRouter();
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions);
 
   if (!session) {
-    router.push('/login');
-    return null;
+    redirect('/login');
   }
 
   return <>{children}</>;

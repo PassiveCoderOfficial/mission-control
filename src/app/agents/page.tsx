@@ -33,7 +33,7 @@ export default function EnhancedAgentsPage() {
   const [showCommandModal, setShowCommandModal] = useState(false);
   const [command, setCommand] = useState('');
   const { data: metrics } = useRealTimeMetrics({ refreshInterval: 10000 });
-  const { data: systemHealth } = useSystemHealth();
+  const { health: systemHealth } = useSystemHealth();
 
   useEffect(() => {
     fetchAgents();
